@@ -8,5 +8,6 @@ namespace TwitchBot
 {
     class Commands
     {
+        // TODO: Commands
     }
 }

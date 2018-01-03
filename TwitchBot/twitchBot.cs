@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace TwitchBot
 {
@@ -13,27 +9,37 @@ namespace TwitchBot
         {
             string filePath = @"D:\Code projects\TwitchBot\TwitchBot\Twitch Login.txt";
             string[] fileContent = null;
+
             if (!File.Exists(filePath))
             {
-                Console.WriteLine("File doesn't exists. Create a text file with your OAuth and Nickname" +
+                Console.WriteLine("File was created. Fill a text file with your OAuth and Nickname" +
                     "respectively in the project folder.");
                 File.Create(filePath);
+                Console.WriteLine("Shutting down...");
+                Console.ReadKey();
+                return;
+                //File.WriteAllLines(filePath, new string[] {"OAuth", "Nickname"});
             }
-            else { fileContent = File.ReadAllLines(filePath); }
+            else fileContent = File.ReadAllLines(filePath);
+
             string OAuth = fileContent[0];
             string NickName = fileContent[1];
+
             IRC twitchBot = new IRC(OAuth, NickName);
             twitchBot.Connect();
-            twitchBot.JoinChannel(NickName);
-            //try
-            //{
-            //    twitchBot.ReadMessage();
-            //}
-            //catch (Exception e)
-            //{
-            //    Console.WriteLine(e);
-            //}
-            //Console.ReadKey();
+
+            if (twitchBot.IsConnected)
+            {
+                Console.WriteLine("Connected");
+                twitchBot.JoinChannel(NickName);
+            }
+            else
+            {
+                Console.WriteLine("Could not connect to the server. Shutting down");
+                Console.ReadKey();
+                return;
+            }
+
             do
             {
                 while (!Console.KeyAvailable)
@@ -42,12 +48,13 @@ namespace TwitchBot
                     {
                         twitchBot.ReadMessage();
                     }
-                    catch (System.Net.Sockets.SocketException e)
+                    catch (Exception e)
                     {
-                        Console.WriteLine(e);
+                        Console.WriteLine(e.Message);
                     }
                 }
             } while (Console.ReadKey(true).Key != ConsoleKey.Escape);
+
             twitchBot.PartChannel(NickName);
             twitchBot.Disconnect();
             Console.ReadKey();

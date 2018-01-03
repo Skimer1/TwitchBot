@@ -9,20 +9,20 @@ namespace TwitchBot
 {
     class IRC
     {
-        private string OAuth { get; set; }
-        private string NickName { get; set; }
-        //private byte[] Byte = new byte[1024];
-        string pattern = @"(\w*)!(?:.*[:])(.*)";
+        private string OAuth;
+        private string NickName;
+
+        string Pattern = @"(\w*)!(?:.*[:])(.*)";
+
         const string ServerAddress = "irc.chat.twitch.tv";
         static IPHostEntry IPHost = Dns.GetHostEntry(ServerAddress);
         static IPAddress IPAddr = IPHost.AddressList[0];
-        static int[] ports = new int[2] { 443, 6667 };
-        //static Socket Sender = new Socket(IPAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-        //static IPEndPoint TwitchServer = new IPEndPoint(IPAddr, ports[0]);
-        //static TcpClient tcpClient = new TcpClient(TwitchServer);
+        static int port = 6667;
         TcpClient tcpClient;
         StreamWriter writer;
         StreamReader reader;
+
+        public bool IsConnected { get; private set; }
 
         public IRC() { }
         public IRC(string OAuth, string NickName)
@@ -30,23 +30,24 @@ namespace TwitchBot
             this.OAuth = OAuth;
             this.NickName = NickName;
             tcpClient = new TcpClient();
-            tcpClient.Connect(ServerAddress, ports[1]);
+            tcpClient.Connect(ServerAddress, port);
             reader = new StreamReader(tcpClient.GetStream());
             writer = new StreamWriter(tcpClient.GetStream());
         }
 
         public void Connect()
         {
-            writer.WriteLine($"PASS {OAuth}");
-            Console.WriteLine($"PASS OAuth...");
-            writer.WriteLine($"NICK {NickName}");
-            Console.WriteLine($"NICK {NickName}");
-            writer.Flush();
-            //Sender.Connect(TwitchServer);
-            //Sender.Send(Encoding.UTF8.GetBytes($"PASS {OAuth}"));
-            //Console.WriteLine($"PASS {OAuth}");
-            //Sender.Send(Encoding.UTF8.GetBytes($"NICK {NickName}"));
-            //Console.WriteLine($"NICK {NickName}");
+            try
+            {
+
+                writer.WriteLine($"PASS {OAuth}");
+                //Console.WriteLine($"PASS OAuth...");
+                writer.WriteLine($"NICK {NickName}");
+                //Console.WriteLine($"NICK {NickName}");
+                writer.Flush();
+                IsConnected = true;
+            }
+            catch(Exception e) { Console.WriteLine(e); }
         }
 
         public void Disconnect()
@@ -59,10 +60,8 @@ namespace TwitchBot
 
         public void JoinChannel(string ChannelName)
         {
-            // TODO: Use StreamReader
-            writer.WriteLine($"JOIN {ChannelName}");
+            writer.WriteLine($"JOIN #{ChannelName}");
             writer.Flush();
-            //Sender.Send(Encoding.UTF8.GetBytes($"JOIN {ChannelName}"));
             Console.WriteLine($"Joined Channel #{ChannelName}");
         }
 
@@ -70,7 +69,6 @@ namespace TwitchBot
         {
             writer.WriteLine($"PART {ChannelName}");
             writer.Flush();
-            //Sender.Send(Encoding.UTF8.GetBytes($"PART {ChannelName}"));
             Console.WriteLine($"Left Channel #{ChannelName}");
         }
 
@@ -78,29 +76,24 @@ namespace TwitchBot
         {
             writer.WriteLine(Message);
             writer.Flush();
-            //Sender.Send(Encoding.UTF8.GetBytes(Message));
             Console.WriteLine("Sent: " + Message);
         }
 
         public void ReadMessage()
         {
-            // TODO: Use StreamWriter
-            //int byteMessage = Sender.Receive(Byte);
-            //string Message = Encoding.UTF8.GetString(Byte, 0, byteMessage);
-            if (reader.Peek() > -1)
+            if (tcpClient.Available > 0 || reader.Peek() >= 0)
             {
                 string Message = reader.ReadLine();
-                MatchCollection Matches = Regex.Matches(Message, pattern);
-                //Console.WriteLine(Regex.Match(Message,pattern).Value);
-                if (Matches.Count > 0)
+                Match Matches = Regex.Match(Message, Pattern);
+
+                if (Matches.Value != "")
                 {
-                    Console.Write(Matches[0].Value);
-                    Console.WriteLine(Matches[1].Value);
+                    Console.Write(Matches.Groups[1].Value + ": ");
+                    Console.WriteLine(Matches.Groups[2].Value);
                 }
-                else { Console.WriteLine(Message); }
+
                 if (Message == "PING :tmi.twitch.tv")
                 {
-                    //Sender.Send(Encoding.UTF8.GetBytes("PONG :tmi.twitch.tv"));
                     writer.WriteLine("PONG :tmi.twitch.tv");
                     writer.Flush();
                     Console.WriteLine("PONG");
